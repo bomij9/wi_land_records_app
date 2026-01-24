@@ -4,6 +4,7 @@ from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
 import pyproj
 import requests
 
+# Rest of your code (county_portals, etc.)...
 # Dictionary of Wisconsin counties to their Register of Deeds portals (expanded).
 county_portals = {
     "Adams": "https://www.co.adams.wi.us/departments/register-of-deeds",
