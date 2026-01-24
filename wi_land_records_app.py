@@ -95,42 +95,46 @@ address = st.text_input("Enter address (e.g., 123 Main St, Greenfield, WI)")
 
 if address:
     try:
-        geolocator = Nominatim(user_agent="wi_land_records_app")
-        location = geolocator.geocode(address + ", Wisconsin, USA", timeout=10)
+        geolocator = Nominatim(
+            user_agent="wisconsin-land-plss-app-by-michael (your.email@example.com)",  # <-- Add your real email
+            timeout=10
+        )
+        location = geolocator.geocode(address + ", Wisconsin, USA", addressdetails=1)
 
-if location:
-    # Extract county safely
-    county = None
-    raw_address = location.raw.get('address', {})  # .get() returns {} if no 'address' key
-    # Try common county keys (Nominatim varies: 'county', '_county', etc.)
-    for key in ['county', 'state_county', 'county_name']:
-        if key in raw_address:
-            county = raw_address[key].replace(" County", "").strip()
-            break
+        if location:
+            # Extract county safely (no KeyError)
+            county = None
+            raw_address = location.raw.get('address', {})
+            for key in ['county', 'state_county', 'county_name']:
+                if key in raw_address:
+                    county = raw_address[key].replace(" County", "").strip()
+                    break
 
-    # Fallback: parse from display_name if needed (less reliable but better than crash)
-    if not county and 'display_name' in location.raw:
-        parts = location.raw['display_name'].split(',')
-        for part in parts:
-            part = part.strip()
-            if 'County' in part:
-                county = part.replace(" County", "").strip()
-                break
+            # Fallback to display_name parsing
+            if not county and 'display_name' in location.raw:
+                parts = location.raw['display_name'].split(',')
+                for part in parts:
+                    part = part.strip()
+                    if 'County' in part:
+                        county = part.replace(" County", "").strip()
+                        break
 
-    if county:
-        st.success(f"Address is in {county} County (Lat: {location.latitude:.6f}, Lon: {location.longitude:.6f}).")
-        # ... rest of your portal lookup, PLSS query, etc.
-    else:
-        st.error("Could not extract county from geocoding result. Try a more specific address (include city/ZIP).")
-        st.info("Raw place name: " + location.raw.get('display_name', 'N/A'))
-else:
-    st.error("Address not found. Try including city and ZIP code.")
-                # Pull PLSS data
+            if county:
+                st.success(f"Address is in {county} County (Lat: {location.latitude:.6f}, Lon: {location.longitude:.6f}).")
+
+                # Portal link
+                if county in county_portals:
+                    portal_url = county_portals[county]
+                    st.write(f"Access records here: [{county} County Register of Deeds]({portal_url})")
+                    st.info("Search by address/parcel. Some require subscriptions.")
+                else:
+                    st.warning(f"No portal for {county} County. Check https://www.wrdaonline.org/counties or search online.")
+
+                # PLSS data (in a nested try to isolate network issues)
                 try:
                     in_proj = pyproj.Proj(init='epsg:4326')
                     out_proj = pyproj.Proj(init='epsg:3071')
-                    lon, lat = location.longitude, location.latitude
-                    x, y = pyproj.transform(in_proj, out_proj, lon, lat)
+                    x, y = pyproj.transform(in_proj, out_proj, location.longitude, location.latitude)
 
                     url = "https://dnrmaps.wi.gov/arcgis/rest/services/DW_Map_Dynamic/FR_PLSS_Landnet_WTM_Ext/MapServer/2/query"
                     params = {
@@ -142,20 +146,20 @@ else:
                         'inSR': '3071',
                         'outFields': '*',
                     }
-                    response = requests.get(url, params=params).json()
+                    response = requests.get(url, params=params, timeout=15).json()
 
                     if 'features' in response and response['features']:
                         attrs = response['features'][0]['attributes']
-                        twn = attrs['PLSS_TWN_ID']
-                        rng = attrs['PLSS_RNG_ID']
-                        rng_dir = "E" if attrs['PLSS_RNG_DIR_NUM_CODE'] == 1 else "W"
-                        sec = attrs['PLSS_SCTN_ID']
-                        q1 = attrs['PLSS_Q1_SCTN_NUM_CODE']
-                        q2 = attrs['PLSS_Q2_SCTN_NUM_CODE']
-                        desc = attrs['PLSS_DESC']  # Fallback description
+                        twn = attrs.get('PLSS_TWN_ID', 'N/A')
+                        rng = attrs.get('PLSS_RNG_ID', 'N/A')
+                        rng_dir = "E" if attrs.get('PLSS_RNG_DIR_NUM_CODE') == 1 else "W"
+                        sec = attrs.get('PLSS_SCTN_ID', 'N/A')
+                        q1 = attrs.get('PLSS_Q1_SCTN_NUM_CODE')
+                        q2 = attrs.get('PLSS_Q2_SCTN_NUM_CODE')
+                        desc = attrs.get('PLSS_DESC', '')
 
-                        quarter = quarter_map.get(q1, str(q1))
-                        qq = quarter_map.get(q2, str(q2))
+                        quarter = quarter_map.get(q1, str(q1) if q1 else 'N/A')
+                        qq = quarter_map.get(q2, str(q2) if q2 else 'N/A')
 
                         st.subheader("PLSS Quarter Section Data")
                         st.write(f"Township: {twn}N")
@@ -166,26 +170,31 @@ else:
                         if desc:
                             st.write(f"Full Description: {desc}")
 
-                        # CSSD links
-                        st.subheader("Access CSSD (Control Section Summary Diagram)")
+                        st.subheader("Access CSSD")
                         scf_url = "https://maps.sco.wisc.edu/surveycontrolfinder/"
-                        st.write(
-                            f"Search by T{twn}N R{rng}{rng_dir} S{sec} at [Survey Control Finder]({scf_url}) for CSSD and dossier sheets.")
-
+                        st.write(f"Search T{twn}N R{rng}{rng_dir} S{sec} at [Survey Control Finder]({scf_url})")
                         if county in sewrpc_counties:
                             sewrpc_url = "https://maps.sewrpc.org/plssapp/"
-                            st.write(
-                                f"For {county} County, also check [SEWRPC PLSS Document Search]({sewrpc_url}) using the same TRS.")
+                            st.write(f"For {county} County, check [SEWRPC PLSS Docs]({sewrpc_url})")
                     else:
-                        st.error("No PLSS data found at this location.")
-                except Exception as e:
-                    st.error(f"Error fetching PLSS data: {e}")
-            else:
-                st.error("Could not determine county. Ensure the address is in Wisconsin.")
-        else:
-            st.error("Address not found. Try including city and ZIP code.")
-    except (GeocoderTimedOut, GeocoderUnavailable):
-        st.error("Geocoding service timed out. Try again later.")
+                        st.info("No PLSS data found at this exact point. Try a nearby address.")
+                except Exception as plss_err:
+                    st.error(f"PLSS fetch error: {str(plss_err)}")
 
-st.write(
-    "Note: This app links to resources only—full data like CSSD may require manual search. For statewide parcels (with PLSS), see https://maps.sco.wisc.edu/Parcels. If you need automation for scraping portals or integrating more APIs, let me know!")
+            else:
+                st.error("Could not determine county.")
+                if 'display_name' in location.raw:
+                    st.info(f"Raw location: {location.raw['display_name']}")
+        else:
+            st.error("No location found for this address.")
+
+    except (GeocoderTimedOut, GeocoderUnavailable) as geo_err:
+        st.error(f"Geocoding timeout: {str(geo_err)}. Try again later.")
+    except Exception as e:
+        st.error(f"Unexpected error: {str(e)}")
+
+else:
+    st.write("Enter a Wisconsin address above to start.")
+
+# Footer note
+st.write("Note: Links to public resources only. Full records/CSMs/CSSD may require manual search or subscriptions.")
