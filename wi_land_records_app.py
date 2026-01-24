@@ -96,9 +96,11 @@ address = st.text_input("Enter address (e.g., 123 Main St, Greenfield, WI)")
 if address:
     try:
         geolocator = Nominatim(
-            user_agent="wisconsin-land-plss-app-by-michael (your.email@example.com)",  # <-- Add your real email
-            timeout=10
-        )
+    user_agent="wisconsin-land-plss-finder-app (bodemichael9@gmail.com)",  
+            # <-- Replace with YOUR real email/name
+    timeout=30  
+            # Increase from 10 to 30 seconds to allow more time for slow responses
+)
         location = geolocator.geocode(address + ", Wisconsin, USA", addressdetails=1)
 
         if location:
