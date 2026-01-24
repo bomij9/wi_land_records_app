@@ -176,7 +176,7 @@ if address:
                         scf_url = "https://maps.sco.wisc.edu/surveycontrolfinder/"
                         st.write(f"Search T{twn}N R{rng}{rng_dir} S{sec} at [Survey Control Finder]({scf_url})")
                         if county in sewrpc_counties:
-                            sewrpc_url = "https://maps.sewrpc.org/plssapp/"
+                            sewrpc_url = "https://gis.sewrpc.org/portal/apps/webappviewer/index.html?id=9b49d9d04b294b8c8d1b667c9996b8ac"
                             st.write(f"For {county} County, check [SEWRPC PLSS Docs]({sewrpc_url})")
                     else:
                         st.info("No PLSS data found at this exact point. Try a nearby address.")
