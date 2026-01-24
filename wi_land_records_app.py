@@ -99,26 +99,32 @@ if address:
         location = geolocator.geocode(address + ", Wisconsin, USA", timeout=10)
 
         if location:
-            # Extract county
-            county = None
-            for component in location.raw['address']:
-                if 'county' in component:
-                    county = location.raw['address'][component].replace(" County", "")
-                    break
+    # Extract county safely
+    county = None
+    raw_address = location.raw.get('address', {})  # .get() returns {} if no 'address' key
+    # Try common county keys (Nominatim varies: 'county', '_county', etc.)
+    for key in ['county', 'state_county', 'county_name']:
+        if key in raw_address:
+            county = raw_address[key].replace(" County", "").strip()
+            break
 
-            if county:
-                st.success(f"Address is in {county} County (Lat: {location.latitude}, Lon: {location.longitude}).")
+    # Fallback: parse from display_name if needed (less reliable but better than crash)
+    if not county and 'display_name' in location.raw:
+        parts = location.raw['display_name'].split(',')
+        for part in parts:
+            part = part.strip()
+            if 'County' in part:
+                county = part.replace(" County", "").strip()
+                break
 
-                # Get portal link if available
-                if county in county_portals:
-                    portal_url = county_portals[county]
-                    st.write(
-                        f"Access records (plats, CSMs, subdivisions, deeds, easements) here: [{county} County Register of Deeds]({portal_url})")
-                    st.info("Search by address/parcel ID. Some portals require subscriptions.")
-                else:
-                    st.warning(
-                        f"Portal not found for {county} County. Search online or check https://www.wrdaonline.org/counties.")
-
+    if county:
+        st.success(f"Address is in {county} County (Lat: {location.latitude:.6f}, Lon: {location.longitude:.6f}).")
+        # ... rest of your portal lookup, PLSS query, etc.
+    else:
+        st.error("Could not extract county from geocoding result. Try a more specific address (include city/ZIP).")
+        st.info("Raw place name: " + location.raw.get('display_name', 'N/A'))
+else:
+    st.error("Address not found. Try including city and ZIP code.")
                 # Pull PLSS data
                 try:
                     in_proj = pyproj.Proj(init='epsg:4326')
