@@ -98,7 +98,7 @@ if address:
         geolocator = Nominatim(user_agent="wi_land_records_app")
         location = geolocator.geocode(address + ", Wisconsin, USA", timeout=10)
 
-        if location:
+if location:
     # Extract county safely
     county = None
     raw_address = location.raw.get('address', {})  # .get() returns {} if no 'address' key
