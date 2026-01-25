@@ -181,96 +181,83 @@ if address:
                         if county in sewrpc_counties:
                             sewrpc_url = "https://gis.sewrpc.org/portal/apps/webappviewer/index.html?id=9b49d9d04b294b8c8d1b667c9996b8ac"
                             st.write(f"For {county} County, check [SEWRPC PLSS Docs]({sewrpc_url})")
-# ────────────────────────────────────────────────────────────────
-# PNEZD Export: 4 Corners of the Quarter-Quarter Section
-# Standard clockwise: 1=NE → 2=NW → 3=SW → 4=SE
-# ───────────────────────────────────────────────────────────────
+                            
+                        # ────────────────────────────────────────────────────────────────
+                        # PNEZD Export: 4 Corners (Clockwise: 1=NE → 2=NW → 3=SW → 4=SE)
+                        # ────────────────────────────────────────────────────────────────
+                        try:
+                            polygon_url = "https://dnrmaps.wi.gov/arcgis/rest/services/DW_Map_Dynamic/FR_PLSS_Landnet_WTM_Ext/MapServer/2/query"
+                            polygon_params = {
+                                'f': 'json',
+                                'where': f"PLSS_TWN_ID = '{twn}' AND PLSS_RNG_ID = '{rng}' AND PLSS_RNG_DIR_NUM_CODE = {1 if rng_dir == 'E' else 2} AND PLSS_SCTN_ID = '{sec}' AND PLSS_Q1_SCTN_NUM_CODE = {q1} AND PLSS_Q2_SCTN_NUM_CODE = {q2}",
+                                'returnGeometry': 'true',
+                                'outFields': '*',
+                                'outSR': '3071'
+                            }
 
-# Only run if we have valid PLSS identification
-if 'features' in response and response['features'] and 'q1' in locals() and 'q2' in locals():
-try:
-    # Query polygon geometry for the specific quarter-quarter
-    polygon_url = "https://dnrmaps.wi.gov/arcgis/rest/services/DW_Map_Dynamic/FR_PLSS_Landnet_WTM_Ext/MapServer/2/query"
-    polygon_params = {
-        'f': 'json',
-        'where': f"PLSS_TWN_ID = '{twn}' AND PLSS_RNG_ID = '{rng}' AND PLSS_RNG_DIR_NUM_CODE = {1 if rng_dir == 'E' else 2} AND PLSS_SCTN_ID = '{sec}' AND PLSS_Q1_SCTN_NUM_CODE = {q1} AND PLSS_Q2_SCTN_NUM_CODE = {q2}",
-        'returnGeometry': 'true',
-        'outFields': '*',
-        'outSR': '3071'  # WI State Plane South
-    }
+                            poly_resp = requests.get(polygon_url, params=polygon_params, timeout=15).json()
 
-    try:
-        poly_resp = requests.get(polygon_url, params=polygon_params, timeout=15).json()
+                            if 'features' in poly_resp and poly_resp['features']:
+                                geom = poly_resp['features'][0]['geometry']
+                                rings = geom.get('rings', [])
 
-        if 'features' in poly_resp and poly_resp['features']:
-            geom = poly_resp['features'][0]['geometry']
-            rings = geom.get('rings', [])
+                                if rings:
+                                    exterior = rings[0]
+                                    points = [(coord[0], coord[1]) for coord in exterior]
 
-            if rings:
-                exterior = rings[0]
-                points = [(coord[0], coord[1]) for coord in exterior]
+                                    if len(points) > 1 and points[0] == points[-1]:
+                                        points = points[:-1]
 
-                if len(points) > 1 and points[0] == points[-1]:
-                    points = points[:-1]
+                                    if len(points) >= 4:
+                                        cx = sum(x for x, y in points) / len(points)
+                                        cy = sum(y for x, y in points) / len(points)
 
-                if len(points) >= 4:
-                    # Centroid
-                    cx = sum(x for x, y in points) / len(points)
-                    cy = sum(y for x, y in points) / len(points)
+                                        def angle_key(p):
+                                            return math.atan2(p[1] - cy, p[0] - cx)
 
-                    # Clockwise sort by angle from centroid
-                    def angle_key(p):
-                        return math.atan2(p[1] - cy, p[0] - cx)
-                    sorted_pts = sorted(points, key=angle_key, reverse=True)  # reverse for clockwise
+                                        sorted_pts = sorted(points, key=angle_key, reverse=True)
 
-                    # Start at NE-most (max y, then max x)
-                    ne_pt = max(sorted_pts, key=lambda p: (p[1], p[0]))
-                    idx = sorted_pts.index(ne_pt)
-                    rotated = sorted_pts[idx:] + sorted_pts[:idx]
+                                        ne_pt = max(sorted_pts, key=lambda p: (p[1], p[0]))
+                                        idx = sorted_pts.index(ne_pt)
+                                        rotated = sorted_pts[idx:] + sorted_pts[:idx]
 
-                    # Assign labels in clockwise order: NE → NW → SW → SE
-                    corner_labels = ["NE", "NW", "SW", "SE"]
+                                        corner_labels = ["NE", "NW", "SW", "SE"]
 
-                    pnezd_rows = []
-                    for i, (easting, northing) in enumerate(rotated[:4], start=1):
-                        label = corner_labels[i-1]
-                        desc = (f"{label} corner (P={i}) of {quarter_map.get(q1, '?')}{quarter_map.get(q2, '?')} "
-                                f"¼ Sec {sec}, T{twn}N R{rng}{rng_dir} | "
-                                f"Addr: {address} | County: {county} | Z=0 (no vertical datum in PLSS data)")
-                        row = {
-                            "P": i,
-                            "N": round(northing, 3),
-                            "E": round(easting, 3),
-                            "Z": 0.000,
-                            "D": desc
-                        }
-                        pnezd_rows.append(row)
+                                        pnezd_rows = []
+                                        for i, (easting, northing) in enumerate(rotated[:4], start=1):
+                                            label = corner_labels[i-1]
+                                            desc = f"{label} corner (P={i}) of {quarter_map.get(q1, '?')}{quarter_map.get(q2, '?')} ¼ Sec {sec}, T{twn}N R{rng}{rng_dir} | Addr: {address} | Co: {county} | Z=0"
+                                            row = {
+                                                "P": i,
+                                                "N": round(northing, 3),
+                                                "E": round(easting, 3),
+                                                "Z": 0.000,
+                                                "D": desc
+                                            }
+                                            pnezd_rows.append(row)
 
-                    df = pd.DataFrame(pnezd_rows)
-                    csv_buffer = io.StringIO()
-                    df.to_csv(csv_buffer, index=False, header=True)
-                    csv_str = csv_buffer.getvalue()
+                                        df = pd.DataFrame(pnezd_rows)
+                                        csv_buffer = io.StringIO()
+                                        df.to_csv(csv_buffer, index=False, header=True)
+                                        csv_str = csv_buffer.getvalue()
 
-                    st.download_button(
-                        label="Download Quarter Corners PNEZD CSV (Clockwise 1=NE → 4=SE)",
-                        data=csv_str,
-                        file_name=f"pnezd_corners_{address.replace(' ', '_')[:20]}.csv",
-                        mime="text/csv",
-                        help="Clockwise order: P=1 NE, P=2 NW, P=3 SW, P=4 SE. WI State Plane (EPSG:3071). Z=0 (no elevation in PLSS)."
-                    )
+                                        st.download_button(
+                                            label="Download PNEZD Corners (1=NE → 4=SE)",
+                                            data=csv_str,
+                                            file_name=f"pnezd_{address.replace(' ', '_')[:20]}.csv",
+                                            mime="text/csv"
+                                        )
 
-                    if st.checkbox("Preview PNEZD CSV"):
-                        st.text(csv_str.strip())
+                                    else:
+                                        st.info("Polygon has <4 points.")
+                                else:
+                                    st.info("No polygon rings.")
+                            else:
+                                st.info("No polygon found for this quarter-quarter.")
+                        except Exception as e:
+                            st.error(f"Corner export failed: {str(e)}")
+                            st.info("Only text results available – polygon/corners not loaded.")
 
-                else:
-                    st.info("Polygon has fewer than 4 valid points.")
-            else:
-                st.info("No polygon rings returned.")
-        else:
-            st.info("No matching quarter-quarter polygon found.")
-    except Exception as poly_err:
-        st.error(f"Polygon fetch error: {str(poly_err)}")
-                    
                     else:
                         st.info("No PLSS data found at this exact point. Try a nearby address.")
                 except Exception as plss_err:
