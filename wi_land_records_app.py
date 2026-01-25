@@ -200,7 +200,7 @@ if address:
                         try:
                             polygon_url = "https://dnrmaps.wi.gov/arcgis/rest/services/DW_Map_Dynamic/FR_PLSS_Landnet_WTM_Ext/MapServer/2/query"
                             
-                            # Use numeric comparison (no quotes around numbers)
+                            # Use unquoted numeric values (fields are integers)
                             dir_code = attrs.get('PLSS_RNG_DIR_NUM_CODE', 1 if rng_dir == 'E' else 2)
                             
                             where_clause = (
@@ -222,7 +222,7 @@ if address:
 
                             poly_resp = requests.get(polygon_url, params=polygon_params, timeout=15).json()
 
-                            # If we got features, process them
+                            # Process if features exist
                             if 'features' in poly_resp and poly_resp['features']:
                                 geom = poly_resp['features'][0]['geometry']
                                 rings = geom.get('rings', [])
@@ -279,7 +279,7 @@ if address:
                                     st.info("No polygon rings found.")
                             else:
                                 st.info("No matching quarter-quarter polygon found.")
-            except Exception as e:
-                st.error(f"Polygon query / corner export failed: {str(e)}")
+                        except Exception as e:
+                            st.error(f"Polygon query or corner export failed: {str(e)}")
 # Footer note
 st.write("Note: Links to public resources only. Full records/CSMs/CSSD may require manual search or subscriptions.")
