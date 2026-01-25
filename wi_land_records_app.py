@@ -197,6 +197,14 @@ if address:
 
                             poly_resp = requests.get(polygon_url, params=polygon_params, timeout=15).json()
 
+                            st.write("Debug: PLSS point attrs:", attrs)  # show raw values
+                            st.write("Debug: WHERE clause used:", polygon_params['where'])
+                            st.write("Debug: Polygon response features count:", len(poly_resp.get('features', [])))
+                            if 'features' in poly_resp and poly_resp['features']:
+                                st.write("Debug: First feature attrs:", poly_resp['features'][0]['attributes'])
+                            else:
+                                st.write("Debug: Full poly_resp:", poly_resp)  # or poly_resp.get('error', 'No error key'))
+
                             if 'features' in poly_resp and poly_resp['features']:
                                 geom = poly_resp['features'][0]['geometry']
                                 rings = geom.get('rings', [])
