@@ -279,7 +279,7 @@ if address:
                                     st.info("No polygon rings found.")
                             else:
                                 st.info("No matching quarter-quarter polygon found.")
-                        except Exception as e:
-                            st.error(f"Polygon query / corner export failed: {str(e)}")
+            except Exception as e:
+                st.error(f"Polygon query / corner export failed: {str(e)}")
 # Footer note
 st.write("Note: Links to public resources only. Full records/CSMs/CSSD may require manual search or subscriptions.")
