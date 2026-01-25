@@ -73,7 +73,7 @@ county_portals = {
     "Trempealeau": "https://tremplocounty.com/departments/register-of-deeds",
     "Vernon": "https://www.vernoncountywi.gov/departments/register_of_deeds/index.php",
     "Vilas": "https://www.vilascountywi.gov/departments/register_of_deeds/index.php",
-    "Walworth": "https://www.co.walworth.wi.us/212/Register-of-Deeds",
+    "Walworth": "https://www.co.walworth.wi.us/243/Real-Estate-Records",
     "Washburn": "https://www.co.washburn.wi.us/departments/register-of-deeds",
     "Washington": "https://www.washcowisco.gov/departments/register_of_deeds",
     "Waukesha": "https://www.waukeshacounty.gov/registerofdeeds",
