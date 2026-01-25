@@ -153,6 +153,18 @@ if address:
                     }
                     response = requests.get(url, params=params, timeout=15).json()
 
+                    # Debug prints - add these
+                    st.write("**Debug: Polygon Query WHERE clause:**", polygon_params['where'])
+                    st.write("**Debug: Polygon response keys:**", list(poly_resp.keys()))
+                    st.write("**Debug: Features count:**", len(poly_resp.get('features', [])))
+                if 'features' in poly_resp and poly_resp['features']:
+                    st.write("**Debug: First feature attributes:**", poly_resp['features'][0]['attributes'])
+                    st.write("**Debug: Geometry present?**", 'geometry' in poly_resp['features'][0])
+                elif 'error' in poly_resp:
+                    st.error("ArcGIS error:", poly_resp['error'])
+                else:
+                    st.info("No features or unexpected response format.")
+
                     if 'features' in response and response['features']:
                         attrs = response['features'][0]['attributes']
                         twn = attrs.get('PLSS_TWN_ID', 'N/A')
