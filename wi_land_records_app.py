@@ -189,8 +189,7 @@ if address:
                             polygon_url = "https://dnrmaps.wi.gov/arcgis/rest/services/DW_Map_Dynamic/FR_PLSS_Landnet_WTM_Ext/MapServer/2/query"
                             polygon_params = {
                                 'f': 'json',
-                                'where': f"PLSS_TWN_ID = {twn} AND PLSS_RNG_ID = {rng} AND PLSS_RNG_DIR_NUM_CODE = {1 if rng_dir == 'E' else 2} AND PLSS_SCTN_ID = {sec} AND PLSS_Q1_SCTN_NUM_CODE = {q1} AND PLSS_Q2_SCTN_NUM_CODE = {q2}",
-                                'returnGeometry': 'true',
+                                'where': f"PLSS_TWN_ID = {twn} AND PLSS_RNG_ID = {rng} AND PLSS_RNG_DIR_NUM_CODE = {1 if rng_dir == 'E' else 2} AND PLSS_SCTN_ID = {sec} AND PLSS_Q1_SCTN_NUM_CODE = {q1} AND PLSS_Q2_SCTN_NUM_CODE = {q2}",                                'returnGeometry': 'true',
                                 'outFields': '*',
                                 'outSR': '3071'
                             }
