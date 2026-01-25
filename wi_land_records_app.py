@@ -3,6 +3,9 @@ from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
 import pyproj
 import requests
+import math
+import pandas as pd
+import io
 
 # Rest of your code (county_portals, etc.)...
 # Dictionary of Wisconsin counties to their Register of Deeds portals (expanded).
