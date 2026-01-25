@@ -188,7 +188,7 @@ if address:
 
 # Only run if we have valid PLSS identification
 if 'features' in response and response['features'] and 'q1' in locals() and 'q2' in locals():
-
+try:
     # Query polygon geometry for the specific quarter-quarter
     polygon_url = "https://dnrmaps.wi.gov/arcgis/rest/services/DW_Map_Dynamic/FR_PLSS_Landnet_WTM_Ext/MapServer/2/query"
     polygon_params = {
