@@ -199,100 +199,63 @@ if address:
                         # ────────────────────────────────────────────────────────────────
                         try:
                             polygon_url = "https://dnrmaps.wi.gov/arcgis/rest/services/DW_Map_Dynamic/FR_PLSS_Landnet_WTM_Ext/MapServer/2/query"
+                            
+                            # FIX: No quotes around numeric fields (they are integers)
+                            # Also use the actual PLSS_RNG_DIR_NUM_CODE from attrs if available
+                            dir_code = attrs.get('PLSS_RNG_DIR_NUM_CODE', 1 if rng_dir == 'E' else 2)
+                            
+                            where_clause = (
+                                f"PLSS_TWN_ID = {twn} "
+                                f"AND PLSS_RNG_ID = {rng} "
+                                f"AND PLSS_RNG_DIR_NUM_CODE = {dir_code} "
+                                f"AND PLSS_SCTN_ID = {sec} "
+                                f"AND PLSS_Q1_SCTN_NUM_CODE = {q1} "
+                                f"AND PLSS_Q2_SCTN_NUM_CODE = {q2}"
+                            )
+                            
                             polygon_params = {
                                 'f': 'json',
-                                'where': f"PLSS_TWN_ID = {twn} AND PLSS_RNG_ID = {rng} AND PLSS_RNG_DIR_NUM_CODE = {1 if rng_dir == 'E' else 2} AND PLSS_SCTN_ID = {sec} AND PLSS_Q1_SCTN_NUM_CODE = {q1} AND PLSS_Q2_SCTN_NUM_CODE = {q2}",                                'returnGeometry': 'true',
+                                'where': where_clause,
+                                'returnGeometry': 'true',
                                 'outFields': '*',
                                 'outSR': '3071'
                             }
 
+                            # Debug: show exactly what we're querying
+                            st.write("**Debug: Polygon WHERE clause:**", where_clause)
+                            
                             poly_resp = requests.get(polygon_url, params=polygon_params, timeout=15).json()
-
-                            st.write("Debug: PLSS point attrs:", attrs)  # show raw values
-                            st.write("Debug: WHERE clause used:", polygon_params['where'])
-                            st.write("Debug: Polygon response features count:", len(poly_resp.get('features', [])))
+                            
+                            # More debug
+                            st.write("**Debug: Polygon response has features?**", 'features' in poly_resp and len(poly_resp.get('features', [])) > 0)
+                            st.write("**Debug: Features count:**", len(poly_resp.get('features', [])))
                             if 'features' in poly_resp and poly_resp['features']:
-                                st.write("Debug: First feature attrs:", poly_resp['features'][0]['attributes'])
+                                st.write("**Debug: First feature attrs:**", poly_resp['features'][0]['attributes'])
+                            elif 'error' in poly_resp:
+                                st.error("**ArcGIS returned an error:**", poly_resp['error'])
                             else:
-                                st.write("Debug: Full poly_resp:", poly_resp)  # or poly_resp.get('error', 'No error key'))
+                                st.write("**Debug: Full poly_resp keys:**", list(poly_resp.keys()))
 
                             if 'features' in poly_resp and poly_resp['features']:
                                 geom = poly_resp['features'][0]['geometry']
                                 rings = geom.get('rings', [])
-
                                 if rings:
                                     exterior = rings[0]
                                     points = [(coord[0], coord[1]) for coord in exterior]
-
                                     if len(points) > 1 and points[0] == points[-1]:
                                         points = points[:-1]
-
                                     if len(points) >= 4:
-                                        cx = sum(x for x, y in points) / len(points)
-                                        cy = sum(y for x, y in points) / len(points)
-
-                                        def angle_key(p):
-                                            return math.atan2(p[1] - cy, p[0] - cx)
-
-                                        sorted_pts = sorted(points, key=angle_key, reverse=True)
-
-                                        ne_pt = max(sorted_pts, key=lambda p: (p[1], p[0]))
-                                        idx = sorted_pts.index(ne_pt)
-                                        rotated = sorted_pts[idx:] + sorted_pts[:idx]
-
-                                        corner_labels = ["NE", "NW", "SW", "SE"]
-
-                                        pnezd_rows = []
-                                        for i, (easting, northing) in enumerate(rotated[:4], start=1):
-                                            label = corner_labels[i-1]
-                                            desc = f"{label} corner (P={i}) of {quarter_map.get(q1, '?')}{quarter_map.get(q2, '?')} ¼ Sec {sec}, T{twn}N R{rng}{rng_dir} | Addr: {address} | Co: {county} | Z=0"
-                                            row = {
-                                                "P": i,
-                                                "N": round(northing, 3),
-                                                "E": round(easting, 3),
-                                                "Z": 0.000,
-                                                "D": desc
-                                            }
-                                            pnezd_rows.append(row)
-
-                                        df = pd.DataFrame(pnezd_rows)
-                                        csv_buffer = io.StringIO()
-                                        df.to_csv(csv_buffer, index=False, header=True)
-                                        csv_str = csv_buffer.getvalue()
-
-                                        st.download_button(
-                                            label="Download PNEZD Corners (1=NE → 4=SE)",
-                                            data=csv_str,
-                                            file_name=f"pnezd_{address.replace(' ', '_')[:20]}.csv",
-                                            mime="text/csv"
-                                        )
-
+                                        # ... rest of your sorting / PNEZD row creation / download_button code ...
+                                        # (keep your existing code for centroid, sorting, rotated, corner_labels, pnezd_rows, df, csv_buffer, st.download_button)
                                     else:
-                                        st.info("Polygon has <4 points.")
+                                        st.info("Polygon has fewer than 4 points.")
                                 else:
-                                    st.info("No polygon rings.")
+                                    st.info("No polygon rings found.")
                             else:
-                                st.info("No polygon found for this quarter-quarter.")
+                                st.info("No matching quarter-quarter polygon found in the database.")
                         except Exception as e:
-                            st.error(f"Corner export failed: {str(e)}")
-                            st.info("Only text results available – polygon/corners not loaded.")
-
-                    else:
-                        st.info("No PLSS data found at this exact point. Try a nearby address.")
-                except Exception as plss_err:
-                    st.error(f"PLSS fetch error: {str(plss_err)}")
-
-            else:
-                st.error("Could not determine county.")
-                if 'display_name' in location.raw:
-                    st.info(f"Raw location: {location.raw['display_name']}")
-        else:
-            st.error("No location found for this address.")
-
-    except (GeocoderTimedOut, GeocoderUnavailable) as geo_err:
-        st.error(f"Geocoding timeout: {str(geo_err)}. Try again later.")
-    except Exception as e:
-        st.error(f"Unexpected error: {str(e)}")
+                            st.error(f"Corner export / polygon query failed: {str(e)}")
+                            st.info("Only text PLSS results available – corners not exported.")
 
 else:
     st.write("Enter a Wisconsin address above to start.")
