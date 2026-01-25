@@ -194,10 +194,10 @@ if address:
                             sewrpc_url = "https://gis.sewrpc.org/portal/apps/webappviewer/index.html?id=9b49d9d04b294b8c8d1b667c9996b8ac"
                             st.write(f"For {county} County, check [SEWRPC PLSS Docs]({sewrpc_url})")
                             
-                        # ────────────────────────────────────────────────────────────────
-                        # PNEZD Export: 4 Corners (Clockwise: 1=NE → 2=NW → 3=SW → 4=SE)
-                        # ────────────────────────────────────────────────────────────────
-                        try:
+                # ────────────────────────────────────────────────────────────────
+                # PNEZD Export: 4 Corners (Clockwise: 1=NE → 2=NW → 3=SW → 4=SE)
+                # ────────────────────────────────────────────────────────────────
+                    try:
                             polygon_url = "https://dnrmaps.wi.gov/arcgis/rest/services/DW_Map_Dynamic/FR_PLSS_Landnet_WTM_Ext/MapServer/2/query"
                             
                             # Use unquoted numeric values (fields are integers)
