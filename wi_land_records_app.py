@@ -272,13 +272,13 @@ if address:
                                             file_name=f"pnezd_{address.replace(' ', '_')[:20]}.csv",
                                             mime="text/csv"
                                         )
+                                        else:
+                                            st.info("Polygon has fewer than 4 points.")
                                     else:
-                                        st.info("Polygon has fewer than 4 points.")
+                                        st.info("No polygon rings found.")
                                 else:
-                                    st.info("No polygon rings found.")
-                            else:
-                                st.info("No matching quarter-quarter polygon found.")
-                        except Exception as e:
-                            st.error(f"Polygon query or corner export failed: {str(e)}")
+                                    st.info("No matching quarter-quarter polygon found.")
+                                except Exception as e:
+                                    st.error(f"Polygon query or corner export failed: {str(e)}")
 # Footer note
 st.write("Note: Links to public resources only. Full records/CSMs/CSSD may require manual search or subscriptions.")
