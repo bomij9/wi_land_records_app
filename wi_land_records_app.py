@@ -85,7 +85,7 @@ county_portals = {
     "Winnebago": "https://www.co.winnebago.wi.gov/departments/register-of-deeds",
     "Wood": "https://www.woodcountywi.gov/departments/rod"
 }
-}
+
 
 sewrpc_counties = ["Milwaukee", "Kenosha", "Ozaukee", "Walworth", "Waukesha", "Racine"]
 
