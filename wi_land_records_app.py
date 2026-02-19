@@ -221,4 +221,14 @@ if address:
 
             st.info(f"""
             Quick steps:
-            1
+            1. Open the [SCO Survey Control Finder](https://maps.sco.wisc.edu/surveycontrolfinder/)
+            2. Let the interactive map load fully (may take a moment; tabs include Search, Layers, Results, Information).
+            3. Use the **Search** or query tools (often in a right-side panel or toolbar) to locate by:
+               - **Township**: {twn} (North)
+               - **Range**: {rng} ({rng_dir})
+               - **Section**: {sec}
+               - Optional: Apply filters for quarter/quarter-quarter if the tool supports it{quarter_hint if quarter_hint else ""}.
+            4. Submit or apply → map zooms to the section; PLSS corner monuments appear as points.
+            5. Click individual monuments for details: exact coordinates, status, photos/notes, and links to county tie sheets.
+            6. Select points (click + queue) → use export options for files you can import into Civil 3D.
+            """)
