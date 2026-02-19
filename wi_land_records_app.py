@@ -116,13 +116,12 @@ if address:
             if plss_data:
                 twn = plss_data.get('PLSS_TWN_ID', 'N/A')
                 rng = plss_data.get('PLSS_RNG_ID', 'N/A')
-                rng_dir_code = plss_data.get('PLSS_RNG_DIR_NUM_CODE', 1)  # assume 1=E, 2=W
+                rng_dir_code = plss_data.get('PLSS_RNG_DIR_NUM_CODE', 1)  # 1=E, 2=W
                 rng_dir = "E" if rng_dir_code == 1 else "W" if rng_dir_code == 2 else "?"
                 sec = plss_data.get('PLSS_SCTN_ID', 'N/A')
                 q1 = plss_data.get('PLSS_Q1_SCTN_NUM_CODE')
                 q2 = plss_data.get('PLSS_Q2_SCTN_NUM_CODE')
                 desc = plss_data.get('PLSS_DESC', '')
-
                 quarter = quarter_map.get(q1, 'N/A') if q1 else 'N/A'
                 qq = quarter_map.get(q2, 'N/A') if q2 else 'N/A'
 
@@ -131,21 +130,63 @@ if address:
                 cols[0].write(f"**Township:** {twn}N")
                 cols[1].write(f"**Range:** {rng}{rng_dir}")
                 cols[2].write(f"**Section:** {sec}")
-                st.write(f"**Quarter Section:** {quarter}")
-                st.write(f"**Quarter-Quarter:** {qq} of the {quarter}")
+                st.write(f"**Quarter Section:** {quarter} ¼")
+                if qq != 'N/A':
+                    st.write(f"**Quarter-Quarter Section:** {qq} ¼ of the {quarter} ¼")
                 if desc:
                     st.write(f"**Full Description:** {desc}")
 
-                st.subheader("Related Resources")
+                st.subheader("Higher-Accuracy Corner Coordinates & Tie Sheets")
+                st.markdown(
+                    "The **SCO Survey Control Finder** is the best source for precise, county-sourced surveyed corner coordinates "
+                    "(often to cm-level in remonumented areas like Milwaukee County), monument status, recovery notes, "
+                    "tie sheets/CSSD PDFs (via county links where available), and exports (CSV, Shapefile, KML, GeoJSON)."
+                )
+
+                search_terms = f"T{twn}N R{rng}{rng_dir} S{sec}"
+                quarter_hint = ""
+                if quarter != 'N/A':
+                    quarter_hint = f" — focus on the {quarter} quarter"
+                    if qq != 'N/A':
+                        quarter_hint += f" ({qq} quarter-quarter)"
+
+                st.info(f"""
+                Quick steps:
+                1. Open the [SCO Survey Control Finder](https://maps.sco.wisc.edu/surveycontrolfinder/)
+                2. Let the interactive map load fully (may take a moment; tabs include Search, Layers, Results, Information).
+                3. Use the **Search** or query tools (often in a right-side panel or toolbar) to locate by:
+                   - **Township**: {twn} (North)
+                   - **Range**: {rng} ({rng_dir})
+                   - **Section**: {sec}
+                   - Optional: Apply filters for quarter/quarter-quarter if the tool supports it{quarter_hint}.
+                4. Submit or apply → map zooms to the section; PLSS corner monuments appear as points.
+                5. Click individual monuments for details: exact coordinates, status, photos/notes, and links to county tie sheets.
+                6. Select points (click + queue) → use export options for files you can import into Civil 3D.
+                """)
+
+                st.markdown(
+                    f"**Start here:** [Launch Survey Control Finder](https://maps.sco.wisc.edu/surveycontrolfinder/) "
+                    f"and search/query **{search_terms}**{quarter_hint}"
+                )
+
                 scf_url = "https://maps.sco.wisc.edu/surveycontrolfinder/"
-                st.markdown(f"Search T{twn}N R{rng}{rng_dir} S{sec} at [Survey Control Finder]({scf_url})")
+                st.markdown(f"Search **T{twn}N R{rng}{rng_dir} S{sec}** at [Survey Control Finder]({scf_url})")
 
                 if county in sewrpc_counties:
                     sewrpc_url = "https://gis.sewrpc.org/portal/apps/webappviewer/index.html?id=9b49d9d04b294b8c8d1b667c9996b8ac"
-                    st.markdown(f"For **{county} County**, view [SEWRPC PLSS Documents]({sewrpc_url})")
+                    st.markdown(
+                        f"**SE Wisconsin users (Milwaukee area):** Also check the [SEWRPC PLSS Viewer]({sewrpc_url}) "
+                        f"— supports direct Township/Range/Section queries and local dossier/tie sheet access."
+                    )
+
+                st.caption(
+                    "**Note:** DNR PLSS data provides generalized IDs and approx. polygons (useful for reference). "
+                    "SCO Survey Control Finder draws from county-submitted surveyed monuments for superior accuracy "
+                    "where remonumentation is complete. Always confirm with official records or a field survey—this is not legal boundary data."
+                )
 
                 # ────────────────────────────────────────────────
-                # PNEZD Export: Get full quarter-quarter polygon → sort corners clockwise from NE
+                # PNEZD Export (single block, no duplication)
                 # ────────────────────────────────────────────────
                 try:
                     poly_params = {
@@ -162,31 +203,22 @@ if address:
                         'outFields': '*',
                         'outSR': '3071'
                     }
-
                     poly_resp = requests.get(url, params=poly_params, timeout=15).json()
-
                     if 'features' in poly_resp and poly_resp['features']:
                         geom = poly_resp['features'][0]['geometry']
                         rings = geom.get('rings', [])
                         if rings and len(rings[0]) >= 4:
                             exterior = rings[0]
                             points = [(coord[0], coord[1]) for coord in exterior if coord != exterior[-1]]  # close ring fix
-
                             if len(points) >= 4:
-                                # Centroid for polar sort
                                 cx = sum(x for x, y in points) / len(points)
                                 cy = sum(y for x, y in points) / len(points)
-
                                 def angle_key(p):
                                     return math.atan2(p[1] - cy, p[0] - cx)
-
                                 sorted_pts = sorted(points, key=angle_key, reverse=True)  # clockwise
-
-                                # Rotate so NE (highest y, then highest x) is first
                                 ne_pt = max(sorted_pts, key=lambda p: (p[1], p[0]))
                                 idx = sorted_pts.index(ne_pt)
                                 rotated = sorted_pts[idx:] + sorted_pts[:idx]
-
                                 corner_labels = ["NE", "NW", "SW", "SE"]
                                 pnezd_rows = []
                                 for i, (easting, northing) in enumerate(rotated[:4], start=1):
@@ -202,7 +234,6 @@ if address:
                                         "Z": 0.000,
                                         "D": desc
                                     })
-
                                 df = pd.DataFrame(pnezd_rows)
                                 csv_buffer = io.StringIO()
                                 df.to_csv(csv_buffer, index=False)
@@ -218,16 +249,7 @@ if address:
                             st.info("No usable polygon rings returned.")
                     else:
                         st.info("No matching quarter-quarter section polygon found for export.")
-
                 except Exception as poly_e:
                     st.error(f"Failed to fetch/export polygon corners: {poly_e}")
-
             else:
                 st.info("No PLSS quarter-quarter data found at this location (may be outside surveyed area or service issue).")
-
-    except (GeocoderTimedOut, GeocoderUnavailable):
-        st.error("Geocoding service timed out or unavailable. Try again or check your internet.")
-    except Exception as e:
-        st.error(f"Unexpected error: {e}")
-
-st.caption("Note: This app uses public APIs and links only. Official records may require manual search or fees. PLSS data for reference — not legal survey.")
