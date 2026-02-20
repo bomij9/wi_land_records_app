@@ -121,14 +121,22 @@ if address:
                 timeout=45
             )
             location = geolocator.geocode(address + ", Wisconsin, USA", addressdetails=True)
-            time.sleep(1)  # Respect Nominatim usage policy (1 req/sec)
-
+            time.sleep(1)
+        
         if not location:
-            st.error("Could not geocode the address. Try adding city, ZIP, or more details.")
+            st.error("Could not geocode the address. Try adding more details.")
             st.stop()
-    except Exception as e:
-            st.error(f"Geocoding failed: {str(e)}")
-            # Optionally: st.stop() or return/continue
+        
+        # Your county extraction code here...
+        county = None
+        if hasattr(location, 'raw') and isinstance(location.raw, dict):
+            # ... your existing county logic ...
+        
+        # Rest of success handling...
+    
+    except Exception as e:  # ← Add this at the same indent as 'try:'
+        st.error(f"Error during geocoding: {str(e)}")
+        # Optional: st.stop() or show fallback UI
 
         # ── County extraction ── robust version
 county = None
