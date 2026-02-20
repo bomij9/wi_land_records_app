@@ -1,3 +1,18 @@
+from nicegui import ui
+import requests  # etc.
+
+
+async def search():
+    with ui.dialog() as dialog:  # or spinner
+        ui.label('Geocoding...').classes('text-lg')
+    # your geocoding + PLSS logic here
+    ui.notify('Results ready!')
+
+
+ui.label('Wisconsin Land Records & PLSS Finder').classes('text-3xl')
+address = ui.input('Enter address').props('outlined')
+ui.button('Search', on_click=search)
+ui.run()
 import streamlit as st
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
@@ -111,6 +126,9 @@ if address:
         if not location:
             st.error("Could not geocode the address. Try adding city, ZIP, or more details.")
             st.stop()
+    except Exception as e:
+            st.error(f"Geocoding failed: {str(e)}")
+            # Optionally: st.stop() or return/continue
 
         # ── County extraction ── robust version
 county = None
