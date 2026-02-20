@@ -114,7 +114,7 @@ if address:
             st.stop()
 
         # ── County extraction ── robust version
-        county = None
+county = None
 if hasattr(location, 'raw') and isinstance(location.raw, dict):
     raw_addr = location.raw.get('address', {})
     # Prioritize common keys
