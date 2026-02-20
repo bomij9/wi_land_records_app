@@ -171,12 +171,12 @@ if address:
                 if 'features' in result and result['features']:
                     plss_data = result['features'][0]['attributes']
 
-            except requests.exceptions.Timeout:
-                st.warning("PLSS query timed out. Try again later.")
-            except requests.exceptions.RequestException as e:
-                st.error(f"Network issue with PLSS service: {e}")
-            except Exception as e:
-                st.error(f"Error querying PLSS: {e}")
+        except requests.exceptions.Timeout:
+            st.warning("PLSS query timed out. Try again later.")
+        except requests.exceptions.RequestException as e:
+            st.error(f"Network issue with PLSS service: {e}")
+        except Exception as e:
+            st.error(f"Error querying PLSS: {e}")
 
         # ────────────────────────────────────────────────
         # Display PLSS & SCO guidance
