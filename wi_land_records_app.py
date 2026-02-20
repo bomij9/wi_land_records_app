@@ -11,7 +11,7 @@ import time
 # Dictionary of Wisconsin counties to their Register of Deeds portals
 # (Fill this out completely – here's a starter; add the rest)
 county_portals = {
-    
+
     "Adams": "https://www.co.adams.wi.us/departments/register-of-deeds",
     "Ashland": "https://www.co.ashland.wi.us/departments/register-of-deeds",
     "Barron": "https://www.barroncountywi.gov/156/Register-of-Deeds",
@@ -86,7 +86,6 @@ county_portals = {
     "Wood": "https://www.woodcountywi.gov/departments/rod"
 }
 
-
 sewrpc_counties = ["Milwaukee", "Kenosha", "Ozaukee", "Walworth", "Waukesha", "Racine"]
 
 quarter_map = {1: "NE", 2: "NW", 3: "SE", 4: "SW"}
@@ -122,7 +121,7 @@ if hasattr(location, 'raw') and isinstance(location.raw, dict):
         if key in raw_addr and isinstance(raw_addr[key], str):
             county = raw_addr[key].replace(" County", "").strip()
             break
-    
+
     # Fallback: parse display_name as last resort
     if not county and 'display_name' in location.raw:
         parts = [p.strip() for p in location.raw['display_name'].split(',')]
@@ -139,81 +138,81 @@ else:
     st.warning("Could not determine county from geocoding result. PLSS and portal may be limited.")
     county = "Unknown"  # for later checks
 
-        # ────────────────────────────────────────────────
-        # PLSS Point Query
-        # ────────────────────────────────────────────────
-        plss_data = None
-        try:
-            with st.spinner("Querying Wisconsin DNR PLSS service..."):
-                transformer = Transformer.from_crs("EPSG:4326", "EPSG:3071", always_xy=True)
-                x, y = transformer.transform(location.longitude, location.latitude)
+    # ────────────────────────────────────────────────
+    # PLSS Point Query
+    # ────────────────────────────────────────────────
+    plss_data = None
+    try:
+        with st.spinner("Querying Wisconsin DNR PLSS service..."):
+            transformer = Transformer.from_crs("EPSG:4326", "EPSG:3071", always_xy=True)
+            x, y = transformer.transform(location.longitude, location.latitude)
 
-                url = "https://dnrmaps.wi.gov/arcgis/rest/services/DW_Map_Dynamic/FR_PLSS_Landnet_WTM_Ext/MapServer/2/query"
-                params = {
-                    'f': 'json',
-                    'returnGeometry': 'false',
-                    'spatialRel': 'esriSpatialRelWithin',
-                    'geometry': f'{{"x":{x},"y":{y},"spatialReference":{{"wkid":3071}}}}',
-                    'geometryType': 'esriGeometryPoint',
-                    'inSR': '3071',
-                    'outFields': '*',
-                }
-                resp = requests.get(url, params=params, timeout=20)
-                resp.raise_for_status()
-                result = resp.json()
+            url = "https://dnrmaps.wi.gov/arcgis/rest/services/DW_Map_Dynamic/FR_PLSS_Landnet_WTM_Ext/MapServer/2/query"
+            params = {
+                'f': 'json',
+                'returnGeometry': 'false',
+                'spatialRel': 'esriSpatialRelWithin',
+                'geometry': f'{{"x":{x},"y":{y},"spatialReference":{{"wkid":3071}}}}',
+                'geometryType': 'esriGeometryPoint',
+                'inSR': '3071',
+                'outFields': '*',
+            }
+            resp = requests.get(url, params=params, timeout=20)
+            resp.raise_for_status()
+            result = resp.json()
 
-                if 'features' in result and result['features']:
-                    plss_data = result['features'][0]['attributes']
+            if 'features' in result and result['features']:
+                plss_data = result['features'][0]['attributes']
 
-        except requests.exceptions.Timeout:
-            st.warning("PLSS query timed out. Try again later.")
-        except requests.exceptions.RequestException as e:
-            st.error(f"Network issue with PLSS service: {e}")
-        except Exception as e:
-            st.error(f"Error querying PLSS: {e}")
+    except requests.exceptions.Timeout:
+        st.warning("PLSS query timed out. Try again later.")
+    except requests.exceptions.RequestException as e:
+        st.error(f"Network issue with PLSS service: {e}")
+    except Exception as e:
+        st.error(f"Error querying PLSS: {e}")
 
-        # ────────────────────────────────────────────────
-        # Display PLSS & SCO guidance
-        # ────────────────────────────────────────────────
-        if plss_data:
-            twn = plss_data.get('PLSS_TWN_ID', 'N/A')
-            rng = plss_data.get('PLSS_RNG_ID', 'N/A')
-            rng_dir_code = plss_data.get('PLSS_RNG_DIR_NUM_CODE', 1)  # 1=E, 2=W
-            rng_dir = "E" if rng_dir_code == 1 else "W" if rng_dir_code == 2 else "?"
-            sec = plss_data.get('PLSS_SCTN_ID', 'N/A')
-            q1 = plss_data.get('PLSS_Q1_SCTN_NUM_CODE')
-            q2 = plss_data.get('PLSS_Q2_SCTN_NUM_CODE')
-            desc = plss_data.get('PLSS_DESC', '')
-            quarter = quarter_map.get(q1, 'N/A') if q1 else 'N/A'
-            qq = quarter_map.get(q2, 'N/A') if q2 else 'N/A'
+    # ────────────────────────────────────────────────
+    # Display PLSS & SCO guidance
+    # ────────────────────────────────────────────────
+    if plss_data:
+        twn = plss_data.get('PLSS_TWN_ID', 'N/A')
+        rng = plss_data.get('PLSS_RNG_ID', 'N/A')
+        rng_dir_code = plss_data.get('PLSS_RNG_DIR_NUM_CODE', 1)  # 1=E, 2=W
+        rng_dir = "E" if rng_dir_code == 1 else "W" if rng_dir_code == 2 else "?"
+        sec = plss_data.get('PLSS_SCTN_ID', 'N/A')
+        q1 = plss_data.get('PLSS_Q1_SCTN_NUM_CODE')
+        q2 = plss_data.get('PLSS_Q2_SCTN_NUM_CODE')
+        desc = plss_data.get('PLSS_DESC', '')
+        quarter = quarter_map.get(q1, 'N/A') if q1 else 'N/A'
+        qq = quarter_map.get(q2, 'N/A') if q2 else 'N/A'
 
-            st.subheader("PLSS Quarter-Quarter Section")
-            cols = st.columns(3)
-            cols[0].write(f"**Township:** {twn}N")
-            cols[1].write(f"**Range:** {rng}{rng_dir}")
-            cols[2].write(f"**Section:** {sec}")
-            st.write(f"**Quarter Section:** {quarter} ¼")
+        st.subheader("PLSS Quarter-Quarter Section")
+        cols = st.columns(3)
+        cols[0].write(f"**Township:** {twn}N")
+        cols[1].write(f"**Range:** {rng}{rng_dir}")
+        cols[2].write(f"**Section:** {sec}")
+        st.write(f"**Quarter Section:** {quarter} ¼")
+        if qq != 'N/A':
+            st.write(f"**Quarter-Quarter Section:** {qq} ¼ of the {quarter} ¼")
+        if desc:
+            st.write(f"**Full Description:** {desc}")
+
+        # ── SCO Survey Control Finder guidance ──
+        st.subheader("Higher-Accuracy Corner Coordinates & Tie Sheets")
+        st.markdown(
+            "The **SCO Survey Control Finder** provides precise surveyed corner coordinates "
+            "(often cm-level in remonumented counties like Milwaukee), monument details, "
+            "tie sheets/CSSD PDFs, and exports (CSV, Shapefile, KML, GeoJSON)."
+        )
+
+        search_terms = f"T{twn}N R{rng}{rng_dir} S{sec}"
+        quarter_hint = ""
+        if quarter != 'N/A':
+            quarter_hint = f" — focus on the {quarter} quarter"
             if qq != 'N/A':
-                st.write(f"**Quarter-Quarter Section:** {qq} ¼ of the {quarter} ¼")
-            if desc:
-                st.write(f"**Full Description:** {desc}")
+                quarter_hint += f" ({qq} quarter-quarter)"
 
-            # ── SCO Survey Control Finder guidance ──
-            st.subheader("Higher-Accuracy Corner Coordinates & Tie Sheets")
-            st.markdown(
-                "The **SCO Survey Control Finder** provides precise surveyed corner coordinates "
-                "(often cm-level in remonumented counties like Milwaukee), monument details, "
-                "tie sheets/CSSD PDFs, and exports (CSV, Shapefile, KML, GeoJSON)."
-            )
-
-            search_terms = f"T{twn}N R{rng}{rng_dir} S{sec}"
-            quarter_hint = ""
-            if quarter != 'N/A':
-                quarter_hint = f" — focus on the {quarter} quarter"
-                if qq != 'N/A':
-                    quarter_hint += f" ({qq} quarter-quarter)"
-
-            st.info(f"""
+        st.info(f"""
             Quick steps:
             1. Open the [SCO Survey Control Finder](https://maps.sco.wisc.edu/surveycontrolfinder/)
             2. Let the interactive map load fully (may take a moment; tabs include Search, Layers, Results, Information).
