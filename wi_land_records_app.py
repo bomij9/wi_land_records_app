@@ -115,35 +115,29 @@ if address:
 
         # ── County extraction ── robust version
         county = None
-        if hasattr(location, 'raw') and isinstance(location.raw, dict):
-            raw_addr = location.raw.get('address', {})
-            for key in ['county', 'state_county', 'county_name', 'state_district']:
-                if key in raw_addr and isinstance(raw_addr[key], str):
-                    county = raw_addr[key].replace(" County", "").strip()
-                    break
+if hasattr(location, 'raw') and isinstance(location.raw, dict):
+    raw_addr = location.raw.get('address', {})
+    # Prioritize common keys
+    for key in ['county', 'state_district', 'region', 'state_county']:
+        if key in raw_addr and isinstance(raw_addr[key], str):
+            county = raw_addr[key].replace(" County", "").strip()
+            break
+    
+    # Fallback: parse display_name as last resort
+    if not county and 'display_name' in location.raw:
+        parts = [p.strip() for p in location.raw['display_name'].split(',')]
+        for part in reversed(parts):  # County usually near end
+            if 'County' in part:
+                county = part.replace(" County", "").strip()
+                break
 
-            if not county and 'display_name' in location.raw:
-                parts = [p.strip() for p in location.raw['display_name'].split(',')]
-                for part in parts:
-                    if 'County' in part:
-                        county = part.replace(" County", "").strip()
-                        break
-
-        if not county:
-            st.warning("Could not reliably determine county. Some features may be limited.")
-        else:
-            st.success(f"Located in **{county} County** (Lat: {location.latitude:.6f}, Lon: {location.longitude:.6f})")
-
-            # Register of Deeds link
-            if county in county_portals:
-                portal_url = county_portals[county]
-                st.markdown(f"**{county} County Register of Deeds:** [{portal_url}]({portal_url})")
-                st.info("Search by address or parcel ID. Some sites require payment/subscription.")
-            else:
-                st.warning(
-                    f"No portal listed for {county} County. "
-                    "Try https://www.wrdaonline.org/counties or Google search."
-                )
+if county:
+    # Normalize common variations (e.g., "Saint Croix" → "St. Croix")
+    county = county.replace("St.", "St").replace("Fond Du Lac", "Fond du Lac")
+    st.success(f"Located in **{county} County** (Lat: {location.latitude:.6f}, Lon: {location.longitude:.6f})")
+else:
+    st.warning("Could not determine county from geocoding result. PLSS and portal may be limited.")
+    county = "Unknown"  # for later checks
 
         # ────────────────────────────────────────────────
         # PLSS Point Query
